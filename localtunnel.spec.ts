@@ -32,7 +32,7 @@ it('query localtunnel server w/ ident', async done => {
     host: parsed.host,
     port: 443,
     headers: { host: parsed.hostname },
-    path: '/',
+    path: '/'
   };
 
   const req = https.request(opt, res => {
@@ -54,9 +54,7 @@ it('query localtunnel server w/ ident', async done => {
 });
 
 it('request specific domain', async () => {
-  const subdomain = Math.random()
-    .toString(36)
-    .substr(2);
+  const subdomain = Math.random().toString(36).substr(2);
   const tunnel = await localtunnel({ port: fakePort, subdomain });
   assert.ok(new RegExp(`^https://${subdomain}.localtunnel.me$`).test(tunnel.url));
   tunnel.close();
@@ -72,7 +70,7 @@ describe('--local-host localhost', () => {
       host: parsed.host,
       port: 443,
       headers: { host: parsed.hostname },
-      path: '/',
+      path: '/'
     };
 
     const req = https.request(opt, res => {
@@ -104,9 +102,9 @@ describe('--local-host 127.0.0.1', () => {
       host: parsed.host,
       port: 443,
       headers: {
-        host: parsed.hostname,
+        host: parsed.hostname
       },
-      path: '/',
+      path: '/'
     };
 
     const req = https.request(opt, res => {
@@ -137,9 +135,9 @@ describe('--local-host 127.0.0.1', () => {
       port: 443,
       headers: {
         host: parsed.hostname,
-        'Transfer-Encoding': 'chunked',
+        'Transfer-Encoding': 'chunked'
       },
-      path: '/',
+      path: '/'
     };
 
     const req = https.request(opt, res => {

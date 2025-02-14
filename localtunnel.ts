@@ -12,7 +12,19 @@ interface LocalTunnelOptions {
   allow_invalid_cert?: boolean;
 }
 
-export default function localtunnel(
+function localtunnel(options: LocalTunnelOptions): Promise<Tunnel>;
+function localtunnel(
+  options: LocalTunnelOptions,
+  callback: (err: Error | null, tunnel?: Tunnel) => void
+): Tunnel;
+function localtunnel(port: number, options?: LocalTunnelOptions): Promise<Tunnel>;
+function localtunnel(
+  port: number,
+  options: LocalTunnelOptions,
+  callback: (err: Error | null, tunnel?: Tunnel) => void
+): Tunnel;
+
+function localtunnel(
   arg1: number | LocalTunnelOptions,
   arg2?: LocalTunnelOptions | ((err: Error | null, tunnel?: Tunnel) => void),
   arg3?: (err: Error | null, tunnel?: Tunnel) => void
@@ -28,3 +40,5 @@ export default function localtunnel(
     client.open(err => (err ? reject(err) : resolve(client)))
   );
 }
+
+export default localtunnel;

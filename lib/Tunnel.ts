@@ -1,15 +1,51 @@
-/* eslint-disable consistent-return, no-underscore-dangle */
+import axios from 'axios';
+import Debug from 'debug';
+import { EventEmitter } from 'events';
+import { parse } from 'url';
 
-const { parse } = require('url');
-const { EventEmitter } = require('events');
-const axios = require('axios');
-const debug = require('debug')('localtunnel:client');
+import TunnelCluster from './TunnelCluster';
 
-const TunnelCluster = require('./TunnelCluster');
+const debug = Debug('localtunnel:client');
 
-module.exports = class Tunnel extends EventEmitter {
-  constructor(opts = {}) {
-    super(opts);
+interface TunnelOptions {
+  host?: string;
+  port: number;
+  subdomain?: string;
+  local_host?: string;
+  local_https?: boolean;
+  local_cert?: string;
+  local_key?: string;
+  local_ca?: string;
+  allow_invalid_cert?: boolean;
+}
+
+interface TunnelInfo {
+  name: string;
+  url: string;
+  cached_url?: string;
+  max_conn: number;
+  remote_host: string;
+  remote_ip: string;
+  remote_port: number;
+  local_port: number;
+  local_host?: string;
+  local_https?: boolean;
+  local_cert?: string;
+  local_key?: string;
+  local_ca?: string;
+  allow_invalid_cert?: boolean;
+}
+
+export default class Tunnel extends EventEmitter {
+  opts: TunnelOptions;
+  closed: boolean;
+  clientId?: string;
+  url?: string;
+  cachedUrl?: string;
+  tunnelCluster?: TunnelCluster;
+
+  constructor(opts: TunnelOptions) {
+    super();
     this.opts = opts;
     this.closed = false;
     if (!this.opts.host) {
@@ -17,8 +53,7 @@ module.exports = class Tunnel extends EventEmitter {
     }
   }
 
-  _getInfo(body) {
-    /* eslint-disable camelcase */
+  _getInfo(body: any): TunnelInfo {
     const { id, ip, port, url, cached_url, max_conn_count } = body;
     const { host, port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } = this.opts;
@@ -27,7 +62,7 @@ module.exports = class Tunnel extends EventEmitter {
       url,
       cached_url,
       max_conn: max_conn_count || 1,
-      remote_host: parse(host).hostname,
+      remote_host: parse(host!).hostname!,
       remote_ip: ip,
       remote_port: port,
       local_port,
@@ -36,19 +71,18 @@ module.exports = class Tunnel extends EventEmitter {
       local_cert,
       local_key,
       local_ca,
-      allow_invalid_cert,
+      allow_invalid_cert
     };
-    /* eslint-enable camelcase */
   }
 
   // initialize connection
   // callback with connection info
-  _init(cb) {
+  _init(cb: (err: Error | null, info?: TunnelInfo) => void) {
     const opt = this.opts;
     const getInfo = this._getInfo.bind(this);
 
     const params = {
-      responseType: 'json',
+      responseType: 'json' as const
     };
 
     const baseUri = `${opt.host}/`;
@@ -78,7 +112,7 @@ module.exports = class Tunnel extends EventEmitter {
     })();
   }
 
-  _establish(info) {
+  _establish(info: TunnelInfo) {
     // increase max event listeners so that localtunnel consumers don't get
     // warning messages as soon as they setup even one listener. See #71
     this.setMaxListeners(info.max_conn + (EventEmitter.defaultMaxListeners || 10));
@@ -124,7 +158,7 @@ module.exports = class Tunnel extends EventEmitter {
       if (this.closed) {
         return;
       }
-      this.tunnelCluster.open();
+      this.tunnelCluster?.open();
     });
 
     this.tunnelCluster.on('request', req => {
@@ -137,21 +171,21 @@ module.exports = class Tunnel extends EventEmitter {
     }
   }
 
-  open(cb) {
+  open(cb: (err?: Error) => void) {
     this._init((err, info) => {
       if (err) {
         return cb(err);
       }
 
-      this.clientId = info.name;
-      this.url = info.url;
+      this.clientId = info!.name;
+      this.url = info!.url;
 
       // `cached_url` is only returned by proxy servers that support resource caching.
-      if (info.cached_url) {
-        this.cachedUrl = info.cached_url;
+      if (info!.cached_url) {
+        this.cachedUrl = info!.cached_url;
       }
 
-      this._establish(info);
+      this._establish(info!);
       cb();
     });
   }
@@ -160,4 +194,4 @@ module.exports = class Tunnel extends EventEmitter {
     this.closed = true;
     this.emit('close');
   }
-};
+}

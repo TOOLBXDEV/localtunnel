@@ -3,7 +3,7 @@ module.exports = {
   extends: ['airbnb', 'prettier', 'plugin:jest/recommended'],
   plugins: ['prettier', 'jest'],
   env: {
-    'jest/globals': true,
+    'jest/globals': true
   },
   rules: {
     'prettier/prettier': [
@@ -14,8 +14,8 @@ module.exports = {
         bracketSpacing: true,
         trailingComma: 'es5',
         singleQuote: true,
-        jsxBracketSameLine: false,
-      },
-    ],
-  },
-}
+        jsxBracketSameLine: false
+      }
+    ]
+  }
+};

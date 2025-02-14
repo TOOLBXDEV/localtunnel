@@ -1,15 +1,32 @@
-const { EventEmitter } = require('events');
-const debug = require('debug')('localtunnel:client');
-const fs = require('fs');
-const net = require('net');
-const tls = require('tls');
+import Debug from 'debug';
+import { EventEmitter } from 'events';
+import fs from 'fs';
+import net, { type Socket } from 'net';
+import tls from 'tls';
 
-const HeaderHostTransformer = require('./HeaderHostTransformer');
+import HeaderHostTransformer from './HeaderHostTransformer';
+
+const debug = Debug('localtunnel:client');
+
+interface TunnelClusterOptions {
+  remote_ip?: string;
+  remote_host: string;
+  remote_port: number;
+  local_host?: string;
+  local_port: number;
+  local_https?: boolean;
+  local_cert?: string;
+  local_key?: string;
+  local_ca?: string;
+  allow_invalid_cert?: boolean;
+}
 
 // manages groups of tunnels
-module.exports = class TunnelCluster extends EventEmitter {
-  constructor(opts = {}) {
-    super(opts);
+export default class TunnelCluster extends EventEmitter {
+  opts: TunnelClusterOptions;
+
+  constructor(opts: TunnelClusterOptions) {
+    super();
     this.opts = opts;
   }
 
@@ -36,12 +53,12 @@ module.exports = class TunnelCluster extends EventEmitter {
     // connection to localtunnel server
     const remote = net.connect({
       host: remoteHostOrIp,
-      port: remotePort,
+      port: remotePort
     });
 
     remote.setKeepAlive(true);
 
-    remote.on('error', err => {
+    remote.on('error', (err: NodeJS.ErrnoException) => {
       debug('got remote connection error', err.message);
 
       // emit connection refused errors immediately, because they
@@ -76,14 +93,18 @@ module.exports = class TunnelCluster extends EventEmitter {
         allowInvalidCert
           ? { rejectUnauthorized: false }
           : {
-              cert: fs.readFileSync(opt.local_cert),
-              key: fs.readFileSync(opt.local_key),
-              ca: opt.local_ca ? [fs.readFileSync(opt.local_ca)] : undefined,
+              cert: opt.local_cert ? fs.readFileSync(opt.local_cert) : undefined,
+              key: opt.local_key ? fs.readFileSync(opt.local_key) : undefined,
+              ca: opt.local_ca ? [fs.readFileSync(opt.local_ca)] : undefined
             };
 
       // connection to local http server
       const local = opt.local_https
-        ? tls.connect({ host: localHost, port: localPort, ...getLocalCertOpts() })
+        ? tls.connect({
+            host: localHost,
+            port: localPort,
+            ...getLocalCertOpts()
+          })
         : net.connect({ host: localHost, port: localPort });
 
       const remoteClose = () => {
@@ -103,12 +124,10 @@ module.exports = class TunnelCluster extends EventEmitter {
 
         remote.removeListener('close', remoteClose);
 
-        if (err.code !== 'ECONNREFUSED'
-            && err.code !== 'ECONNRESET') {
+        if (err.code !== 'ECONNREFUSED' && err.code !== 'ECONNRESET') {
           return remote.end();
         }
 
-        // retrying connection to local server
         setTimeout(connLocal, 1000);
       });
 
@@ -116,7 +135,7 @@ module.exports = class TunnelCluster extends EventEmitter {
         debug('connected locally');
         remote.resume();
 
-        let stream = remote;
+        let stream: HeaderHostTransformer | Socket = remote;
 
         // if user requested specific local host
         // then we use host header transform to replace the host header
@@ -139,7 +158,7 @@ module.exports = class TunnelCluster extends EventEmitter {
       if (match) {
         this.emit('request', {
           method: match[1],
-          path: match[2],
+          path: match[2]
         });
       }
     });
@@ -150,4 +169,4 @@ module.exports = class TunnelCluster extends EventEmitter {
       connLocal();
     });
   }
-};
+}

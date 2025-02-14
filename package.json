@@ -18,7 +18,7 @@
     "lt": "bin/lt.js"
   },
   "scripts": {
-    "test": "mocha --reporter list --timeout 60000 -- *.spec.js"
+    "test": "jest --forceExit"
   },
   "dependencies": {
     "axios": "0.21.4",
@@ -28,11 +28,15 @@
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.4",
     "@types/openurl": "^1.0.3",
     "@types/yargs": "^17.0.33",
+    "jest": "^29.7.0",
     "mocha": "~9.1.1",
     "prettier": "^3.5.1",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
   "engines": {

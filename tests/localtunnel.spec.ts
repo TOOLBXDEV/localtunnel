@@ -1,9 +1,7 @@
-/* eslint-disable no-console */
-
 import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
-import localtunnel from './localtunnel';
+import localtunnel from '../localtunnel';
 
 let fakePort: number;
 

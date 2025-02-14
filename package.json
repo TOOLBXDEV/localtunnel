@@ -1,5 +1,5 @@
 {
-  "name": "localtunnel",
+  "name": "@toolbxdev/localtunnel",
   "description": "Expose localhost to the world",
   "version": "2.0.2",
   "license": "MIT",
@@ -13,12 +13,13 @@
     "Gert Hengeveld <gert@hichroma.com>",
     "Tom Coleman <tom@hichroma.com>"
   ],
-  "main": "./localtunnel.js",
+  "main": "./localtunnel.ts",
   "bin": {
     "lt": "bin/lt.js"
   },
   "scripts": {
-    "test": "jest --forceExit"
+    "test": "jest --forceExit",
+    "build": "rm -rf ./build && tsc"
   },
   "dependencies": {
     "axios": "0.21.4",

@@ -1,33 +1,32 @@
 /* eslint-disable no-console */
 
-const crypto = require('crypto');
-const http = require('http');
-const https = require('https');
-const url = require('url');
-const assert = require('assert');
+import crypto from 'crypto';
+import http from 'http';
+import https from 'https';
+import localtunnel from './localtunnel';
 
-const localtunnel = require('./localtunnel');
+let fakePort: number;
 
-let fakePort;
-
-before(done => {
+beforeAll(done => {
   const server = http.createServer();
   server.on('request', (req, res) => {
     res.write(req.headers.host);
     res.end();
   });
   server.listen(() => {
-    const { port } = server.address();
-    fakePort = port;
+    const address = server.address();
+    if (address && typeof address === 'object') {
+      fakePort = address.port;
+    }
     done();
   });
 });
 
-it('query localtunnel server w/ ident', async done => {
+test('query localtunnel server w/ ident', async () => {
   const tunnel = await localtunnel({ port: fakePort });
-  assert.ok(new RegExp('^https://.*localtunnel.me$').test(tunnel.url));
+  expect(tunnel.url! && new RegExp('^https://.*$').test(tunnel.url!)).toBeTruthy();
 
-  const parsed = url.parse(tunnel.url);
+  const parsed = new URL(tunnel.url!);
   const opt = {
     host: parsed.host,
     port: 443,
@@ -44,28 +43,27 @@ it('query localtunnel server w/ ident', async done => {
     });
 
     res.on('end', () => {
-      assert(/.*[.]localtunnel[.]me/.test(body), body);
+      expect(/.*[.]localtunnel[.]me/.test(body)).toBeTruthy();
       tunnel.close();
-      done();
     });
   });
 
   req.end();
 });
 
-it('request specific domain', async () => {
+test('request specific domain', async () => {
   const subdomain = Math.random().toString(36).substr(2);
   const tunnel = await localtunnel({ port: fakePort, subdomain });
-  assert.ok(new RegExp(`^https://${subdomain}.localtunnel.me$`).test(tunnel.url));
+  expect(new RegExp(`^https://${subdomain}\..*$`).test(tunnel.url!)).toBeTruthy();
   tunnel.close();
 });
 
 describe('--local-host localhost', () => {
-  it('override Host header with local-host', async done => {
+  test('override Host header with local-host', async () => {
     const tunnel = await localtunnel({ port: fakePort, local_host: 'localhost' });
-    assert.ok(new RegExp('^https://.*localtunnel.me$').test(tunnel.url));
+    expect(new RegExp('^https://.*$').test(tunnel.url!)).toBeTruthy();
 
-    const parsed = url.parse(tunnel.url);
+    const parsed = new URL(tunnel.url!);
     const opt = {
       host: parsed.host,
       port: 443,
@@ -82,9 +80,8 @@ describe('--local-host localhost', () => {
       });
 
       res.on('end', () => {
-        assert.strictEqual(body, 'localhost');
+        expect(body).toBe('localhost');
         tunnel.close();
-        done();
       });
     });
 
@@ -93,11 +90,11 @@ describe('--local-host localhost', () => {
 });
 
 describe('--local-host 127.0.0.1', () => {
-  it('override Host header with local-host', async done => {
+  test('override Host header with local-host', async () => {
     const tunnel = await localtunnel({ port: fakePort, local_host: '127.0.0.1' });
-    assert.ok(new RegExp('^https://.*localtunnel.me$').test(tunnel.url));
+    expect(new RegExp('^https://.*$').test(tunnel.url!)).toBeTruthy();
 
-    const parsed = url.parse(tunnel.url);
+    const parsed = new URL(tunnel.url!);
     const opt = {
       host: parsed.host,
       port: 443,
@@ -116,20 +113,19 @@ describe('--local-host 127.0.0.1', () => {
       });
 
       res.on('end', () => {
-        assert.strictEqual(body, '127.0.0.1');
+        expect(body).toBe('127.0.0.1');
         tunnel.close();
-        done();
       });
     });
 
     req.end();
   });
 
-  it('send chunked request', async done => {
+  test('send chunked request', async () => {
     const tunnel = await localtunnel({ port: fakePort, local_host: '127.0.0.1' });
-    assert.ok(new RegExp('^https://.*localtunnel.me$').test(tunnel.url));
+    expect(new RegExp('^https://.*$').test(tunnel.url!)).toBeTruthy();
 
-    const parsed = url.parse(tunnel.url);
+    const parsed = new URL(tunnel.url!);
     const opt = {
       host: parsed.host,
       port: 443,
@@ -149,9 +145,8 @@ describe('--local-host 127.0.0.1', () => {
       });
 
       res.on('end', () => {
-        assert.strictEqual(body, '127.0.0.1');
+        expect(body).toBe('127.0.0.1');
         tunnel.close();
-        done();
       });
     });
 

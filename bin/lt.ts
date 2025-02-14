@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
-
 import { readFileSync } from 'fs';
 import openurl from 'openurl';
 import { join } from 'path';

@@ -1,25 +1,32 @@
 {
-  "name": "@toolbxdev/localtunnel",
+  "name": "@TOOLBXDEV/localtunnel",
   "description": "Expose localhost to the world",
-  "version": "2.0.2",
+  "version": "2.0.10",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/localtunnel/localtunnel.git"
+    "url": "git://github.com/@TOOLBXDEV/localtunnel.git"
   },
-  "author": "Roman Shtylman <shtylman@gmail.com>",
+  "author": "Toolbx Dev <dev@toobx.com>",
   "contributors": [
     "Roman Shtylman <shtylman@gmail.com>",
     "Gert Hengeveld <gert@hichroma.com>",
-    "Tom Coleman <tom@hichroma.com>"
+    "Tom Coleman <tom@hichroma.com>",
+    "Larry Li <larry.li@toolbx.com>"
   ],
-  "main": "./localtunnel.ts",
+  "main": "./dist/localtunnel.js",
+  "types": "./dist/localtunnel.d.ts",
+  "exports": {
+    ".": "./dist/localtunnel.js",
+    "./*": "./dist/lib/*.js"
+  },
   "bin": {
     "lt": "bin/lt.js"
   },
   "scripts": {
     "test": "jest --forceExit",
-    "build": "rm -rf ./build && tsc"
+    "build": "rm -rf ./dist && tsc",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "axios": "0.21.4",
@@ -42,5 +49,12 @@
   },
   "engines": {
     "node": ">=8.3.0"
-  }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "files": [
+    "dist/*"
+  ],
+  "private": false
 }

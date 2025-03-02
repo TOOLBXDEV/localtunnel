@@ -1,7 +1,7 @@
 import Tunnel from './lib/Tunnel';
 
 interface LocalTunnelOptions {
-  port: number;
+  port?: number;
   host?: string;
   subdomain?: string;
   local_host?: string;
@@ -31,7 +31,12 @@ function localtunnel(
 ): Promise<Tunnel> | Tunnel {
   const options = typeof arg1 === 'object' ? arg1 : { ...arg2, port: arg1 };
   const callback = typeof arg1 === 'object' ? arg2 : arg3;
-  const client = new Tunnel(options);
+  const client = new Tunnel({
+    ...options,
+    host: options.host || process.env.LT_HOST,
+    subdomain: options.subdomain || process.env.LT_SUBDOMAIN,
+    port: options.port || Number(process.env.LT_PORT)
+  });
   if (typeof callback === 'function') {
     client.open(err => (err ? callback(err) : callback(null, client)));
     return client;

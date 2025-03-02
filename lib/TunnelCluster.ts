@@ -1,9 +1,9 @@
 import Debug from 'debug';
 import { EventEmitter } from 'events';
 import fs from 'fs';
-import net, { type Socket } from 'net';
+import net from 'net';
+import Pumpify from 'pumpify';
 import tls from 'tls';
-
 import HeaderHostTransformer from './HeaderHostTransformer';
 
 const debug = Debug('localtunnel:client');
@@ -58,6 +58,11 @@ export default class TunnelCluster extends EventEmitter {
 
     remote.setKeepAlive(true);
 
+    remote.once('end', () => {
+      debug('remote end');
+      remote.end();
+    });
+
     remote.on('error', (err: NodeJS.ErrnoException) => {
       debug('got remote connection error', err.message);
 
@@ -105,12 +110,14 @@ export default class TunnelCluster extends EventEmitter {
             port: localPort,
             ...getLocalCertOpts()
           })
-        : net.connect({ host: localHost, port: localPort });
+        : net.connect({ host: localHost, port: localPort, keepAlive: true });
 
       const remoteClose = () => {
         debug('remote close');
         this.emit('dead');
         local.end();
+        remote.removeAllListeners();
+        local.removeAllListeners();
       };
 
       remote.once('close', remoteClose);
@@ -135,16 +142,24 @@ export default class TunnelCluster extends EventEmitter {
         debug('connected locally');
         remote.resume();
 
-        let stream: HeaderHostTransformer | Socket = remote;
+        const pumpify = new Pumpify();
 
-        // if user requested specific local host
-        // then we use host header transform to replace the host header
         if (opt.local_host) {
-          debug('transform Host header to %s', opt.local_host);
-          stream = remote.pipe(new HeaderHostTransformer({ host: opt.local_host }));
+          debug('Transform Host header to %s', opt.local_host);
+          pumpify.setPipeline(
+            remote,
+            new HeaderHostTransformer({ host: opt.local_host }),
+            local,
+            remote
+          );
+        } else {
+          pumpify.setPipeline(remote, local, remote);
         }
 
-        stream.pipe(local).pipe(remote);
+        // Handle errors to avoid unhandled stream errors
+        pumpify.once('close', () => {
+          console.error('Stream pipeline closed');
+        });
 
         // when local closes, also get a new remote
         local.once('close', hadError => {

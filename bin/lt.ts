@@ -19,7 +19,6 @@ const yargs = Yargs(process.argv.slice(2))
   .option('host', {
     alias: 'h',
     describe: 'Upstream server providing forwarding',
-    default: 'https://localtunnel.me',
     type: 'string'
   })
   .option('subdomain', {
@@ -67,7 +66,11 @@ const yargs = Yargs(process.argv.slice(2))
     describe: 'Print basic request info',
     type: 'boolean'
   })
-  .demandOption('port')
+  .option('port', {
+    alias: 'p',
+    describe: 'Local port to foward requests to',
+    type: 'number'
+  })
   .boolean('local-https')
   .boolean('allow-invalid-cert')
   .boolean('print-requests')
@@ -76,12 +79,6 @@ const yargs = Yargs(process.argv.slice(2))
 
 (async () => {
   const argv = await yargs.argv;
-
-  if (typeof argv.port !== 'number') {
-    yargs.showHelp();
-    console.error('\nInvalid argument: `port` must be a number');
-    process.exit(1);
-  }
 
   try {
     const tunnel = await localtunnel({

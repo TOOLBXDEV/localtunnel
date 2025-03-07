@@ -1,9 +1,9 @@
 import Debug from 'debug';
 import { EventEmitter } from 'events';
 import fs from 'fs';
-import net, { type Socket } from 'net';
+import net from 'net';
+import Pumpify from 'pumpify';
 import tls from 'tls';
-
 import HeaderHostTransformer from './HeaderHostTransformer';
 
 const debug = Debug('localtunnel:client');
@@ -57,6 +57,12 @@ export default class TunnelCluster extends EventEmitter {
     });
 
     remote.setKeepAlive(true);
+    remote.setTimeout(0);
+
+    remote.once('end', () => {
+      debug('remote end');
+      remote.end();
+    });
 
     remote.on('error', (err: NodeJS.ErrnoException) => {
       debug('got remote connection error', err.message);
@@ -73,6 +79,16 @@ export default class TunnelCluster extends EventEmitter {
       }
 
       remote.end();
+    });
+
+    remote.on('data', data => {
+      const match = data.toString().match(/^(\w+) (\S+)/);
+      if (match) {
+        this.emit('request', {
+          method: match[1],
+          path: match[2]
+        });
+      }
     });
 
     const connLocal = () => {
@@ -105,12 +121,16 @@ export default class TunnelCluster extends EventEmitter {
             port: localPort,
             ...getLocalCertOpts()
           })
-        : net.connect({ host: localHost, port: localPort });
+        : net.connect({ host: localHost, port: localPort, keepAlive: true });
+
+      local.setKeepAlive(true);
+      local.setTimeout(0);
 
       const remoteClose = () => {
-        debug('remote close');
+        debug(`remote close ${remote.localPort}:${remote.remotePort}`);
         this.emit('dead');
         local.end();
+        remote.removeAllListeners();
       };
 
       remote.once('close', remoteClose);
@@ -132,39 +152,45 @@ export default class TunnelCluster extends EventEmitter {
       });
 
       local.once('connect', () => {
-        debug('connected locally');
+        debug(`connected locally ${local.localPort}:${local.remotePort}`);
         remote.resume();
 
-        let stream: HeaderHostTransformer | Socket = remote;
+        const pumpify = new Pumpify();
 
-        // if user requested specific local host
-        // then we use host header transform to replace the host header
         if (opt.local_host) {
-          debug('transform Host header to %s', opt.local_host);
-          stream = remote.pipe(new HeaderHostTransformer({ host: opt.local_host }));
+          debug('Transform Host header to %s', opt.local_host);
+          remote
+            .pipe(new HeaderHostTransformer({ host: opt.local_host }))
+            .pipe(local)
+            .pipe(remote);
+          pumpify.setPipeline(
+            remote,
+            new HeaderHostTransformer({ host: opt.local_host }),
+            local,
+            remote
+          );
+        } else {
+          pumpify.setPipeline(remote, local, remote);
         }
 
-        stream.pipe(local).pipe(remote);
+        // Handle errors to avoid unhandled stream errors
+        pumpify.once('close', () => {
+          console.error('Stream pipeline closed');
+        });
 
         // when local closes, also get a new remote
         local.once('close', hadError => {
-          debug('local connection closed [%s]', hadError);
+          debug(
+            `local connection closed [hadError=${hadError}] ${local.localPort}:${local.remotePort}`
+          );
+          local.removeAllListeners();
         });
       });
     };
 
-    remote.on('data', data => {
-      const match = data.toString().match(/^(\w+) (\S+)/);
-      if (match) {
-        this.emit('request', {
-          method: match[1],
-          path: match[2]
-        });
-      }
-    });
-
     // tunnel is considered open when remote connects
     remote.once('connect', () => {
+      debug(`remote connected ${remote.localPort}:${remote.remotePort}`);
       this.emit('open', remote);
       connLocal();
     });
